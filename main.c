@@ -31,7 +31,7 @@ char *recv_data(int client_fd)
 	return buffer;
 }
 
-int send_data(int client_fd, char *data,int len)
+void send_data(int client_fd, char *data,int len)
 {
 	char len_in_string[10] = "";
 	sprintf(len_in_string,"%d",len);
@@ -54,13 +54,37 @@ int send_data(int client_fd, char *data,int len)
 	
 	printf("%s",response);
 
-	send(client_fd,response,strlen(len_in_string)+len+HTTP_RESPONSE_TEMPLATE_LEN,0); 
+	send(client_fd,response,strlen(response),0); 
 
 	free(response);
-	return 1;
 }
 
-char *html_from_file(char *fileName){
+
+void send_stream(int client_fd, char *data,int len)
+{
+	// sending the header first	
+	int sent = send(client_fd,HTTP_VIDEO_STREAM,strlen(HTTP_VIDEO_STREAM),0);
+	printf("starting: \n%s\nsend%d\n",HTTP_VIDEO_STREAM,sent	);
+
+	int read = 0;
+	char len_in_string[20] = "";
+
+	while (read<len){
+		size_t chunk_size = (len - read > CHUNK_SIZE)? CHUNK_SIZE:len-read;
+
+		sprintf(len_in_string,"%zx\r\n",chunk_size); // %x for hex
+		send(client_fd, len_in_string, strlen(len_in_string),0);
+		send(client_fd, data+read, chunk_size, 0);
+		send(client_fd, "\r\n",2,0);
+		
+		read += chunk_size;
+	}	
+
+	// final
+	send(client_fd,"0\r\n\r\n",5,0);
+}
+
+char *text_from_file(char *fileName){
 	FILE *fp = fopen(fileName,"r");
 
 	if (fp == NULL){
@@ -96,8 +120,52 @@ char *html_from_file(char *fileName){
 		}		
 	}
 	data[size] = '\0';
+	fclose(fp);
 	return data;
 }
+
+void raw_from_file(char *fileName, Binary *raw){
+	FILE *fp = fopen(fileName,"rb");
+
+	if (fp == NULL){
+		printf("Some error opening the file");
+		exit(0);
+	}
+	
+	// dynamically reading the file
+	size_t capacity = 4096;
+	size_t size = 0;
+
+	char *data = malloc(capacity);
+	
+	if (!data){
+		printf("Memory Allocation Failed");
+		exit(0);
+	}
+
+
+	size_t n;
+
+	while ((n = fread(data + size, 1, 1024, fp)) > 0 ){
+		size +=n;
+		if (size + 1024 > capacity){
+			capacity *=2;
+			data = realloc(data, capacity);
+
+			if (!data)
+			{
+				printf("Memory Allocation Failed");
+				exit(0);
+			}
+		}		
+	}
+	
+	raw->data = data;
+	raw->len = size;
+
+	fclose(fp);
+}
+
 
 int main(int argc, char *argv[]){
 	// analyze arguments
@@ -113,23 +181,35 @@ int main(int argc, char *argv[]){
 	int client_fd = accept(server_fd, NULL, NULL);
 
 	char *req = recv_data(client_fd);
-	
-	char *data_to_send;
 
-	if ((argc == 3)&&(strcmp(argv[1],"-filename")==0)){
-		data_to_send = html_from_file(argv[2]);
+	if (argc == 3){
+		if (strcmp(argv[1],"-filename")==0){
+			char *data_to_send = text_from_file(argv[2]);
+		
+			printf("About to Serve the page.. Please wait\n");
+			send_data(client_fd,data_to_send,strlen(data_to_send));
+			free(data_to_send);		
 		}
 
-	else{
-
-		data_to_send = malloc(strlen(argv[1])+1);
-		strcpy(data_to_send,argv[1]);
+		
+		if (strcmp(argv[1],"-video")==0){
+			Binary raw;
+			raw_from_file(argv[2],&raw);
+			send_stream(client_fd,raw.data,raw.len);
+			free(raw.data);
+		}
 
 	}
 
-	int result = send_data(client_fd,data_to_send,strlen(data_to_send));
-	
-	free(data_to_send);	
+	else{
+
+		char *data_to_send = malloc(strlen(argv[1])+1);
+		strcpy(data_to_send,argv[1]);
+
+		printf("About to Serve the page.. Please wait\n");
+		send_data(client_fd,data_to_send,strlen(data_to_send));
+		free(data_to_send);	
+	}
 
 	free(req);	
 	close(client_fd);
