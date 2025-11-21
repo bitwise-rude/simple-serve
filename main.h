@@ -9,6 +9,6 @@
 
 #define PORT 8080
 
-int create_server(int addr, int port);
-
+int create_server(int address, int port);
+char *recv_data(int client_fd);
 
