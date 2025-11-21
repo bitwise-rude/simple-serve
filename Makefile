@@ -1,7 +1,7 @@
 CC = gcc
 
 main: main.o 
-	$(CC) -o main.o
+	$(CC) -o main main.o
 
 main.o: main.c main.h
 	$(CC) -c main.c 
