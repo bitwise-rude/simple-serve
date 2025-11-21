@@ -60,15 +60,57 @@ int send_data(int client_fd, char *data,int len)
 	return 1;
 }
 
+char *html_from_file(char *fileName){
+	FILE *fp = fopen(fileName,"r");
+
+	if (fp == NULL){
+		printf("Some error opening the file");
+		exit(0);
+	}
+	
+	// dynamically reading the file
+	size_t capacity = 4096;
+	size_t size = 0;
+
+	char *data = malloc(capacity);
+	
+	if (!data){
+		printf("Memory Allocation Failed");
+		exit(0);
+	}
+
+
+	size_t n;
+
+	while ((n = fread(data + size, 1, 1024, fp)) > 0 ){
+		size +=n;
+		if (size + 1024 > capacity){
+			capacity *=2;
+			data = realloc(data, capacity);
+
+			if (!data)
+			{
+				printf("Memory Allocation Failed");
+				exit(0);
+			}
+		}		
+	}
+	data[size] = '\0';
+	return data;
+}
+
 int main(){
 	int server_fd = create_server(INADDR_ANY,PORT);
 	int client_fd = accept(server_fd, NULL, NULL);
 
 	char *req = recv_data(client_fd);
-
 	
-	int result = send_data(client_fd,"hello from server",strlen("hello from server"));
-		
+
+	char *data_to_send = html_from_file("index.html");
+
+	int result = send_data(client_fd,data_to_send,strlen(data_to_send));
+	
+	free(data_to_send);	
 
 	free(req);	
 	close(client_fd);
