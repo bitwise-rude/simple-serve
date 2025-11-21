@@ -54,7 +54,7 @@ int send_data(int client_fd, char *data,int len)
 	
 	printf("%s",response);
 
-	send(client_fd,response,len+HTTP_RESPONSE_TEMPLATE_LEN,0); // TODO:HERE TOO
+	send(client_fd,response,strlen(len_in_string)+len+HTTP_RESPONSE_TEMPLATE_LEN,0); 
 
 	free(response);
 	return 1;
