@@ -99,14 +99,33 @@ char *html_from_file(char *fileName){
 	return data;
 }
 
-int main(){
+int main(int argc, char *argv[]){
+	// analyze arguments
+	// main -file <file>
+	// main text
+	
+	if (argc < 2){
+		printf("Incorrect Usage:\n");
+		exit(0);
+	}
+
 	int server_fd = create_server(INADDR_ANY,PORT);
 	int client_fd = accept(server_fd, NULL, NULL);
 
 	char *req = recv_data(client_fd);
 	
+	char *data_to_send;
 
-	char *data_to_send = html_from_file("index.html");
+	if ((argc == 3)&&(strcmp(argv[1],"-filename")==0)){
+		data_to_send = html_from_file(argv[2]);
+		}
+
+	else{
+
+		data_to_send = malloc(strlen(argv[1])+1);
+		strcpy(data_to_send,argv[1]);
+
+	}
 
 	int result = send_data(client_fd,data_to_send,strlen(data_to_send));
 	
