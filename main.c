@@ -63,8 +63,22 @@ void send_data(int client_fd, char *data,int len)
 void send_stream(int client_fd, char *data,int len)
 {
 	// sending the header first	
-	int sent = send(client_fd,HTTP_VIDEO_STREAM,strlen(HTTP_VIDEO_STREAM),0);
-	printf("starting: \n%s\nsend%d\n",HTTP_VIDEO_STREAM,sent	);
+	// int sent = send(client_fd,HTTP_VIDEO_STREAM,strlen(HTTP_VIDEO_STREAM),0);
+	// printf("starting: \n%s\nsend%d\n",HTTP_VIDEO_STREAM,sent	);
+
+	    char header[512];
+    int header_len = sprintf(header, 
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: video/mp4\r\n"
+        "Content-Length: %d\r\n"
+        "Accept-Ranges: bytes\r\n"
+        "Connection: close\r\n"
+        "\r\n", len);
+    
+    printf("Sending header (%d bytes)\n", header_len);
+    send(client_fd, header, header_len, 0);
+    
+    printf("Sending video data (%d bytes)\n", len);
 
 	int read = 0;
 	char len_in_string[20] = "";
